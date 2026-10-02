@@ -1,0 +1,37 @@
+spring:
+
+  datasource:
+    url: jdbc:postgresql://localhost:5432/finpilot
+    username: ${DB_USERNAME:postgres}
+    password: ${DB_PASSWORD:postgres}
+    driver-class-name: org.postgresql.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+
+  security:
+    oauth2:
+      client:
+        registration:
+          google:
+            client-id: dummy
+            client-secret: dummy
+
+jwt:
+  secret: ${JWT_SECRET:dev-only-insecure-jwt-secret-change-me-0123456789}
+  expiration: 120000
+
+marketdata:
+  api:
+    key: ${MARKETDATA_API_KEY:demo}
+  base:
+    url: https://www.alphavantage.co
+
+app:
+  frontend:
+    allowed-origins: http://localhost:5173
