@@ -6,6 +6,7 @@
 !.env.production
 *.env.local
 .env*.local
+k8s/secret.env
 application-local.yaml
 application-local.yml
 application-local.properties
