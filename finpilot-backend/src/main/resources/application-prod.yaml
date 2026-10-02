@@ -33,6 +33,12 @@ marketdata:
   base:
     url: https://www.alphavantage.co
 
+ai:
+  base-url: ${AI_BASE_URL:https://api.openai.com/v1}
+  model: ${AI_MODEL:gpt-4o-mini}
+  api-key: ${AI_API_KEY:}
+  timeout: ${AI_TIMEOUT:30s}
+
 springdoc:
   api-docs:
     enabled: false

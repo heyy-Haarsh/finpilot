@@ -1,5 +1,6 @@
 package com.finpilot.common.exception;
 
+import com.finpilot.insights.exception.AiServiceUnavailableException;
 import com.finpilot.marketdata.exception.MarketDataUnavailableException;
 import com.finpilot.portfolio.exception.InvalidExchangeException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -100,6 +101,12 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(MarketDataUnavailableException.class)
     public ResponseEntity<ErrorResponse> handleMarketDataUnavailable(MarketDataUnavailableException ex, HttpServletRequest request) {
         return buildResponse(HttpStatus.SERVICE_UNAVAILABLE, ex.getMessage(), request);
+    }
+
+    @ExceptionHandler(AiServiceUnavailableException.class)
+    public ResponseEntity<ErrorResponse> handleAiUnavailable(AiServiceUnavailableException ex, HttpServletRequest request) {
+        log.warn("AI review unavailable: {}", ex.getMessage(), ex.getCause());
+        return buildResponse(HttpStatus.SERVICE_UNAVAILABLE, "AI review is temporarily unavailable", request);
     }
 
     @ExceptionHandler(Exception.class)

@@ -11,15 +11,17 @@ import java.util.concurrent.TimeUnit;
 @Configuration
 public class CacheConfig {
 
+    public static final String AI_REVIEWS = "aiReviews";
+
     @Bean
     public CacheManager cacheManager() {
 
-        CaffeineCacheManager cacheManager = new CaffeineCacheManager("marketQuotes");
+        CaffeineCacheManager cacheManager = new CaffeineCacheManager(AI_REVIEWS);
 
         cacheManager.setCaffeine(
                 Caffeine.newBuilder()
-                        .expireAfterWrite(5, TimeUnit.MINUTES)
-                        .maximumSize(100)
+                        .expireAfterWrite(10, TimeUnit.MINUTES)
+                        .maximumSize(1000)
         );
 
         return cacheManager;

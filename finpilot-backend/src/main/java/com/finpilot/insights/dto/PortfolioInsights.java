@@ -47,9 +47,13 @@ public class PortfolioInsights {
 
     private String bestPerformerSymbol;
 
+    private String bestPerformerName;
+
     private BigDecimal bestPerformerReturn;
 
     private String worstPerformerSymbol;
+
+    private String worstPerformerName;
 
     private BigDecimal worstPerformerReturn;
 
@@ -68,5 +72,11 @@ public class PortfolioInsights {
     private BigDecimal mutualFundAllocationPercentage;
 
     private BigDecimal etfAllocationPercentage;
+
+    /* ===============================
+            Currency Exposure
+       =============================== */
+
+    private BigDecimal foreignCurrencyPercentage;
 
 }

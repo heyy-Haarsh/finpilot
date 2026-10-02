@@ -9,6 +9,10 @@ import com.finpilot.common.security.JwtAuthenticationEntryPoint;
 import com.finpilot.common.security.SecurityConfig;
 import com.finpilot.goal.controller.GoalController;
 import com.finpilot.goal.service.GoalService;
+import com.finpilot.insights.controller.InsightsController;
+import com.finpilot.insights.exception.AiServiceUnavailableException;
+import com.finpilot.insights.service.AiPortfolioReviewService;
+import com.finpilot.insights.service.PortfolioInsightsService;
 import com.finpilot.portfolio.controller.PortfolioController;
 import com.finpilot.portfolio.service.PortfolioAnalyticsService;
 import com.finpilot.portfolio.service.PortfolioService;
@@ -43,7 +47,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-@WebMvcTest(controllers = {GoalController.class, PortfolioController.class, HealthController.class})
+@WebMvcTest(controllers = {GoalController.class, PortfolioController.class, InsightsController.class, HealthController.class})
 @Import({SecurityConfig.class, JwtAuthenticationEntryPoint.class})
 @TestPropertySource(properties = "app.frontend.allowed-origins=http://localhost:5173")
 class ApiErrorHandlingTest {
@@ -68,6 +72,12 @@ class ApiErrorHandlingTest {
 
     @MockitoBean
     private PortfolioAnalyticsService portfolioAnalyticsService;
+
+    @MockitoBean
+    private PortfolioInsightsService portfolioInsightsService;
+
+    @MockitoBean
+    private AiPortfolioReviewService aiPortfolioReviewService;
 
     private void authenticateAsUser() {
         User user = User.builder()
@@ -247,6 +257,19 @@ class ApiErrorHandlingTest {
                                 """))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.message").value("Request conflicts with existing data"));
+    }
+
+    @Test
+    void aiProviderFailureReturns503WithoutProviderDetails() throws Exception {
+        authenticateAsUser();
+        when(aiPortfolioReviewService.review(any()))
+                .thenThrow(new AiServiceUnavailableException("AI provider request failed",
+                        new RuntimeException("401 invalid api key sk-123")));
+
+        mockMvc.perform(get("/api/insights/ai-review").header("Authorization", "Bearer " + TOKEN))
+                .andExpect(status().isServiceUnavailable())
+                .andExpect(jsonPath("$.message").value("AI review is temporarily unavailable"))
+                .andExpect(content().string(not(containsString("sk-123"))));
     }
 
     @Test

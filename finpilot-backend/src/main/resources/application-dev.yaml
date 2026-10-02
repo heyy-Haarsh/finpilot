@@ -32,6 +32,12 @@ marketdata:
   base:
     url: https://www.alphavantage.co
 
+ai:
+  base-url: ${AI_BASE_URL:http://localhost:11434/v1}
+  model: ${AI_MODEL:qwen2.5:3b}
+  api-key: ${AI_API_KEY:}
+  timeout: ${AI_TIMEOUT:120s}
+
 app:
   frontend:
     allowed-origins: http://localhost:5173
