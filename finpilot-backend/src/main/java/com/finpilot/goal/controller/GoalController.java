@@ -1,7 +1,7 @@
 package com.finpilot.goal.controller;
 
 import com.finpilot.auth.service.CustomUserDetails;
-import com.finpilot.goal.dto.CreateGoalRequest;
+import com.finpilot.goal.dto.GoalRequest;
 import com.finpilot.goal.dto.GoalResponse;
 import com.finpilot.goal.service.GoalService;
 import jakarta.validation.Valid;
@@ -24,7 +24,7 @@ public class GoalController {
     @PostMapping
     public ResponseEntity<GoalResponse> createGoal(
             @AuthenticationPrincipal CustomUserDetails userDetails,
-            @Valid @RequestBody CreateGoalRequest request) {
+            @Valid @RequestBody GoalRequest request) {
 
         GoalResponse response = goalService.createGoal(
                 userDetails.getUser().getId(),
@@ -52,6 +52,21 @@ public class GoalController {
                 goalService.getGoalById(
                         userDetails.getUser().getId(),
                         goalId
+                )
+        );
+    }
+
+    @PutMapping("/{goalId}")
+    public ResponseEntity<GoalResponse> updateGoal(
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @PathVariable UUID goalId,
+            @Valid @RequestBody GoalRequest request) {
+
+        return ResponseEntity.ok(
+                goalService.updateGoal(
+                        userDetails.getUser().getId(),
+                        goalId,
+                        request
                 )
         );
     }

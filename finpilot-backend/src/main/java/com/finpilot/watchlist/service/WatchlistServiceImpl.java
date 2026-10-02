@@ -3,6 +3,7 @@ package com.finpilot.watchlist.service;
 import com.finpilot.common.exception.DuplicateResourceException;
 import com.finpilot.common.exception.ResourceNotFoundException;
 import com.finpilot.common.util.ExchangeResolver;
+import com.finpilot.common.util.SymbolNormalizer;
 import com.finpilot.marketdata.entity.MarketPriceCache;
 import com.finpilot.marketdata.service.MarketCacheService;
 import com.finpilot.user.entity.User;
@@ -29,6 +30,8 @@ public class WatchlistServiceImpl implements WatchlistService {
             User user,
             AddWatchlistRequest request) {
 
+        String symbol = SymbolNormalizer.normalize(request.getAssetSymbol());
+
         String exchange = exchangeResolver.resolve(
                 request.getExchange(),
                 request.getAssetType()
@@ -36,7 +39,7 @@ public class WatchlistServiceImpl implements WatchlistService {
 
         if (watchlistRepository.existsByUserAndAssetSymbolAndExchangeAndAssetType(
                 user,
-                request.getAssetSymbol(),
+                symbol,
                 exchange,
                 request.getAssetType())) {
 
@@ -47,7 +50,7 @@ public class WatchlistServiceImpl implements WatchlistService {
 
         // Create or refresh cache
         marketCacheService.getLatestMarketPrice(
-                request.getAssetSymbol(),
+                symbol,
                 request.getAssetName(),
                 exchange,
                 request.getAssetType()
@@ -55,7 +58,7 @@ public class WatchlistServiceImpl implements WatchlistService {
 
         Watchlist watchlist = Watchlist.builder()
                 .user(user)
-                .assetSymbol(request.getAssetSymbol())
+                .assetSymbol(symbol)
                 .assetName(request.getAssetName())
                 .exchange(exchange)
                 .assetType(request.getAssetType())

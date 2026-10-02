@@ -18,7 +18,7 @@ import java.util.List;
 import java.util.UUID;
 
 @RestController
-@RequestMapping("api/portfolio")
+@RequestMapping("/api/portfolio")
 @RequiredArgsConstructor
 public class PortfolioController {
 
@@ -40,7 +40,7 @@ public class PortfolioController {
     @PutMapping("/{portfolioId}")
     public ResponseEntity<PortfolioResponse> updateAsset(@AuthenticationPrincipal CustomUserDetails userDetails,
                                                          @PathVariable UUID portfolioId,
-                                                         @RequestBody PortfolioRequest request) {
+                                                         @Valid @RequestBody PortfolioRequest request) {
         return ResponseEntity.ok(portfolioService.updateAsset(userDetails.getUser(), portfolioId, request));
     }
 

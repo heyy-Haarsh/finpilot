@@ -2,7 +2,7 @@ package com.finpilot.goal.service;
 
 import com.finpilot.common.enums.GoalStatus;
 import com.finpilot.common.exception.ResourceNotFoundException;
-import com.finpilot.goal.dto.CreateGoalRequest;
+import com.finpilot.goal.dto.GoalRequest;
 import com.finpilot.goal.dto.GoalResponse;
 import com.finpilot.goal.entity.Goal;
 import com.finpilot.goal.repository.GoalRepository;
@@ -27,7 +27,7 @@ public class GoalServiceImpl implements GoalService {
     private final PortfolioAnalyticsService portfolioAnalyticsService;
 
     @Override
-    public GoalResponse createGoal(Long userId, CreateGoalRequest request) {
+    public GoalResponse createGoal(Long userId, GoalRequest request) {
 
         User user = userRepository.findById(userId)
                 .orElseThrow(() ->
@@ -72,18 +72,36 @@ public class GoalServiceImpl implements GoalService {
                 .orElseThrow(() ->
                         new ResourceNotFoundException("User not found"));
 
-        Goal goal = goalRepository.findById(goalId)
-                .orElseThrow(() ->
-                        new ResourceNotFoundException("Goal not found"));
-
-        if (!goal.getUser().getId().equals(user.getId())) {
-            throw new ResourceNotFoundException("Goal not found");
-        }
+        Goal goal = findOwnedGoal(user, goalId);
 
         PortfolioSummaryResponse portfolioSummary =
                 portfolioAnalyticsService.getPortfolioSummary(user);
 
         return mapToResponse(goal, portfolioSummary.getCurrentValue());
+    }
+
+    @Override
+    public GoalResponse updateGoal(Long userId, UUID goalId, GoalRequest request) {
+
+        User user = userRepository.findById(userId)
+                .orElseThrow(() ->
+                        new ResourceNotFoundException("User not found"));
+
+        Goal goal = findOwnedGoal(user, goalId);
+
+        goal.setGoalName(request.getGoalName());
+        goal.setTargetAmount(request.getTargetAmount());
+        goal.setTargetDate(request.getTargetDate());
+        goal.setPriority(request.getPriority());
+        // Re-evaluated in mapToResponse, so raising the target re-opens a completed goal.
+        goal.setStatus(GoalStatus.ACTIVE);
+
+        Goal savedGoal = goalRepository.save(goal);
+
+        PortfolioSummaryResponse portfolioSummary =
+                portfolioAnalyticsService.getPortfolioSummary(user);
+
+        return mapToResponse(savedGoal, portfolioSummary.getCurrentValue());
     }
 
     @Override
@@ -93,6 +111,11 @@ public class GoalServiceImpl implements GoalService {
                 .orElseThrow(() ->
                         new ResourceNotFoundException("User not found"));
 
+        goalRepository.delete(findOwnedGoal(user, goalId));
+    }
+
+    private Goal findOwnedGoal(User user, UUID goalId) {
+
         Goal goal = goalRepository.findById(goalId)
                 .orElseThrow(() ->
                         new ResourceNotFoundException("Goal not found"));
@@ -101,7 +124,7 @@ public class GoalServiceImpl implements GoalService {
             throw new ResourceNotFoundException("Goal not found");
         }
 
-        goalRepository.delete(goal);
+        return goal;
     }
 
     private GoalResponse mapToResponse(

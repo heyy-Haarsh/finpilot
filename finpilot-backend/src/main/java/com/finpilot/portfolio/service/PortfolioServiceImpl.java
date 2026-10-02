@@ -1,8 +1,8 @@
 package com.finpilot.portfolio.service;
 
-import com.finpilot.common.enums.AssetType;
 import com.finpilot.common.exception.ResourceNotFoundException;
 import com.finpilot.common.util.ExchangeResolver;
+import com.finpilot.common.util.SymbolNormalizer;
 import com.finpilot.marketdata.entity.MarketPriceCache;
 import com.finpilot.marketdata.service.MarketCacheService;
 import com.finpilot.portfolio.dto.PortfolioRequest;
@@ -14,7 +14,6 @@ import com.finpilot.user.entity.User;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import com.finpilot.portfolio.exception.InvalidExchangeException;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -33,15 +32,7 @@ public class PortfolioServiceImpl implements PortfolioService {
     @Override
     public PortfolioResponse addAsset(User user, PortfolioRequest request) {
 
-        if (request.getQuantity() == null ||
-                request.getQuantity().compareTo(BigDecimal.ZERO) <= 0) {
-            throw new IllegalArgumentException("Quantity must be greater than zero");
-        }
-
-        if (request.getPurchasePrice() == null ||
-                request.getPurchasePrice().compareTo(BigDecimal.ZERO) <= 0) {
-            throw new IllegalArgumentException("Purchase price must be greater than zero");
-        }
+        String symbol = SymbolNormalizer.normalize(request.getAssetSymbol());
 
         String exchange = exchangeResolver.resolve(
                 request.getExchange(),
@@ -49,7 +40,7 @@ public class PortfolioServiceImpl implements PortfolioService {
         );
 
         MarketPriceCache marketPrice = marketCacheService.getLatestMarketPrice(
-                request.getAssetSymbol(),
+                symbol,
                 request.getAssetName(),
                 exchange,
                 request.getAssetType()
@@ -58,7 +49,7 @@ public class PortfolioServiceImpl implements PortfolioService {
         return portfolioRepository
                 .findByUserAndAssetSymbolAndExchangeAndAssetType(
                         user,
-                        request.getAssetSymbol(),
+                        symbol,
                         exchange,
                         request.getAssetType()
                 )
@@ -89,6 +80,7 @@ public class PortfolioServiceImpl implements PortfolioService {
                 .orElseGet(() -> {
 
                     Portfolio portfolio = PortfolioMapper.toEntity(request, user);
+                    portfolio.setAssetSymbol(symbol);
                     portfolio.setExchange(exchange);
                     portfolio.setCurrentPrice(marketPrice.getCurrentPrice());
 
@@ -118,16 +110,21 @@ public class PortfolioServiceImpl implements PortfolioService {
                 .findByIdAndUser(portfolioId, user)
                 .orElseThrow(() -> new ResourceNotFoundException("Portfolio not found with id: " + portfolioId));
 
-        String exchange = resolveExchange(request);
+        String symbol = SymbolNormalizer.normalize(request.getAssetSymbol());
+
+        String exchange = exchangeResolver.resolve(
+                request.getExchange(),
+                request.getAssetType()
+        );
 
         MarketPriceCache marketPrice = marketCacheService.getLatestMarketPrice(
-                request.getAssetSymbol(),
+                symbol,
                 request.getAssetName(),
                 exchange,
                 request.getAssetType()
         );
 
-        portfolio.setAssetSymbol(request.getAssetSymbol());
+        portfolio.setAssetSymbol(symbol);
         portfolio.setAssetName(request.getAssetName());
         portfolio.setExchange(exchange);
         portfolio.setAssetType(request.getAssetType());
@@ -149,20 +146,5 @@ public class PortfolioServiceImpl implements PortfolioService {
                 .orElseThrow(() -> new ResourceNotFoundException("Portfolio not found with id: " + portfolioId));
 
         portfolioRepository.delete(portfolio);
-    }
-
-    private String resolveExchange(PortfolioRequest request) {
-
-        if (request.getAssetType() == AssetType.MUTUAL_FUND) {
-            return "MF";
-        }
-
-        if (request.getExchange() == null || request.getExchange().isBlank()) {
-            throw new InvalidExchangeException(
-                    "Exchange is required for STOCK and ETF."
-            );
-        }
-
-        return request.getExchange().trim().toUpperCase();
     }
 }

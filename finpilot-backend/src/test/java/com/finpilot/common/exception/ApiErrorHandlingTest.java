@@ -9,6 +9,9 @@ import com.finpilot.common.security.JwtAuthenticationEntryPoint;
 import com.finpilot.common.security.SecurityConfig;
 import com.finpilot.goal.controller.GoalController;
 import com.finpilot.goal.service.GoalService;
+import com.finpilot.portfolio.controller.PortfolioController;
+import com.finpilot.portfolio.service.PortfolioAnalyticsService;
+import com.finpilot.portfolio.service.PortfolioService;
 import com.finpilot.system.controller.HealthController;
 import com.finpilot.user.entity.User;
 import io.jsonwebtoken.ExpiredJwtException;
@@ -34,11 +37,13 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-@WebMvcTest(controllers = {GoalController.class, HealthController.class})
+@WebMvcTest(controllers = {GoalController.class, PortfolioController.class, HealthController.class})
 @Import({SecurityConfig.class, JwtAuthenticationEntryPoint.class})
 @TestPropertySource(properties = "app.frontend.allowed-origins=http://localhost:5173")
 class ApiErrorHandlingTest {
@@ -57,6 +62,12 @@ class ApiErrorHandlingTest {
 
     @MockitoBean
     private GoalService goalService;
+
+    @MockitoBean
+    private PortfolioService portfolioService;
+
+    @MockitoBean
+    private PortfolioAnalyticsService portfolioAnalyticsService;
 
     private void authenticateAsUser() {
         User user = User.builder()
@@ -141,6 +152,42 @@ class ApiErrorHandlingTest {
                 .andExpect(jsonPath("$.path").value("/api/goals"))
                 .andExpect(jsonPath("$.fieldErrors.goalName").value("Goal name is required"))
                 .andExpect(jsonPath("$.fieldErrors.targetAmount").exists());
+    }
+
+    @Test
+    void portfolioUpdateIsValidated() throws Exception {
+        authenticateAsUser();
+
+        mockMvc.perform(put("/api/portfolio/" + UUID.randomUUID())
+                        .header("Authorization", "Bearer " + TOKEN)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"assetSymbol":"TCS","assetName":"TCS","assetType":"STOCK","exchange":"NSE",
+                                 "quantity":-5,"purchasePrice":100,"purchaseDate":"2099-01-01"}
+                                """))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.fieldErrors.quantity").value("Quantity must be greater than 0"))
+                .andExpect(jsonPath("$.fieldErrors.purchaseDate").value("Purchase date cannot be in the future"));
+
+        verifyNoInteractions(portfolioService);
+    }
+
+    @Test
+    void goalUpdateIsValidated() throws Exception {
+        authenticateAsUser();
+
+        mockMvc.perform(put("/api/goals/" + UUID.randomUUID())
+                        .header("Authorization", "Bearer " + TOKEN)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"goalName":"","targetAmount":0,"targetDate":"2000-01-01","priority":"HIGH"}
+                                """))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.fieldErrors.goalName").value("Goal name is required"))
+                .andExpect(jsonPath("$.fieldErrors.targetAmount").value("Target amount must be greater than zero"))
+                .andExpect(jsonPath("$.fieldErrors.targetDate").value("Target date must be in the future"));
+
+        verifyNoInteractions(goalService);
     }
 
     @Test

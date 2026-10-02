@@ -15,7 +15,7 @@ import java.time.LocalDate;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class CreateGoalRequest {
+public class GoalRequest {
 
     @NotBlank(message = "Goal name is required")
     private String goalName;

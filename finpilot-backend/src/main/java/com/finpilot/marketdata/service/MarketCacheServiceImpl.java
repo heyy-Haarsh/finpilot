@@ -1,6 +1,7 @@
 package com.finpilot.marketdata.service;
 
 import com.finpilot.common.enums.AssetType;
+import com.finpilot.common.util.SymbolNormalizer;
 import com.finpilot.marketdata.dto.MarketQuote;
 import com.finpilot.marketdata.entity.MarketPriceCache;
 import com.finpilot.marketdata.exception.MarketDataUnavailableException;
@@ -31,26 +32,28 @@ public class MarketCacheServiceImpl implements MarketCacheService {
             String exchange,
             AssetType assetType) {
 
-        return cacheRepository.findBySymbolAndExchange(symbol, exchange)
+        String normalizedSymbol = SymbolNormalizer.normalize(symbol);
+
+        return cacheRepository.findBySymbolAndExchange(normalizedSymbol, exchange)
                 .map(cache -> {
 
                     if (isCacheFresh(cache)) {
 
-                        log.debug("Using fresh cache for {}:{}", exchange, symbol);
+                        log.debug("Using fresh cache for {}:{}", exchange, normalizedSymbol);
                         return cache;
 
                     }
 
-                    log.info("Cache expired for {}:{}, refreshing...", exchange, symbol);
+                    log.info("Cache expired for {}:{}, refreshing...", exchange, normalizedSymbol);
 
                     return refreshCache(cache, assetType);
 
                 })
                 .orElseGet(() -> {
 
-                    log.info("No cache found for {}:{}, fetching from provider...", exchange, symbol);
+                    log.info("No cache found for {}:{}, fetching from provider...", exchange, normalizedSymbol);
 
-                    return createCache(symbol, companyName, exchange, assetType);
+                    return createCache(normalizedSymbol, companyName, exchange, assetType);
 
                 });
     }
@@ -61,28 +64,7 @@ public class MarketCacheServiceImpl implements MarketCacheService {
             String exchange,
             AssetType assetType) {
 
-        return cacheRepository.findBySymbolAndExchange(symbol, exchange)
-                .map(cache -> {
-
-                    if (isCacheFresh(cache)) {
-
-                        log.debug("Using fresh cache for {}:{}", exchange, symbol);
-                        return cache;
-
-                    }
-
-                    log.info("Cache expired for {}:{}, refreshing...", exchange, symbol);
-
-                    return refreshCache(cache, assetType);
-
-                })
-                .orElseGet(() -> {
-
-                    log.info("No cache found for {}:{}, fetching from provider...", exchange, symbol);
-
-                    return createCache(symbol, null, exchange, assetType);
-
-                });
+        return getLatestMarketPrice(symbol, null, exchange, assetType);
     }
 
     private boolean isCacheFresh(MarketPriceCache cache) {
