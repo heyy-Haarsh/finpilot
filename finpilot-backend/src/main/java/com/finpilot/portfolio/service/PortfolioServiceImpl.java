@@ -1,7 +1,7 @@
 package com.finpilot.portfolio.service;
 
-import com.finpilot.common.PortfolioNotFoundException;
 import com.finpilot.common.enums.AssetType;
+import com.finpilot.common.exception.ResourceNotFoundException;
 import com.finpilot.common.util.ExchangeResolver;
 import com.finpilot.marketdata.entity.MarketPriceCache;
 import com.finpilot.marketdata.service.MarketCacheService;
@@ -116,7 +116,7 @@ public class PortfolioServiceImpl implements PortfolioService {
 
         Portfolio portfolio = portfolioRepository
                 .findByIdAndUser(portfolioId, user)
-                .orElseThrow(() -> new PortfolioNotFoundException(portfolioId));
+                .orElseThrow(() -> new ResourceNotFoundException("Portfolio not found with id: " + portfolioId));
 
         String exchange = resolveExchange(request);
 
@@ -146,7 +146,7 @@ public class PortfolioServiceImpl implements PortfolioService {
 
         Portfolio portfolio = portfolioRepository
                 .findByIdAndUser(portfolioId, user)
-                .orElseThrow(() -> new PortfolioNotFoundException(portfolioId));
+                .orElseThrow(() -> new ResourceNotFoundException("Portfolio not found with id: " + portfolioId));
 
         portfolioRepository.delete(portfolio);
     }
