@@ -11,6 +11,8 @@ A full-stack investment portfolio management platform that enables users to secu
 ![React](https://img.shields.io/badge/React-19-61DAFB?style=for-the-badge&logo=react)
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-Database-blue?style=for-the-badge&logo=postgresql)
 ![JWT](https://img.shields.io/badge/JWT-Authentication-black?style=for-the-badge&logo=jsonwebtokens)
+![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?style=for-the-badge&logo=docker)
+![Kubernetes](https://img.shields.io/badge/Kubernetes-Manifests-326CE5?style=for-the-badge&logo=kubernetes)
 ![Railway](https://img.shields.io/badge/Backend-Railway-purple?style=for-the-badge&logo=railway)
 ![Vercel](https://img.shields.io/badge/Frontend-Vercel-black?style=for-the-badge&logo=vercel)
 
@@ -108,6 +110,17 @@ Unlike spreadsheet-based tracking, FinPilot provides a centralized dashboard whe
 
 ---
 
+## AI Portfolio Review
+
+- Computes portfolio facts in Java: totals, profit/loss, largest holding, best/worst performer, allocation, foreign-currency exposure and an HHI-based diversification score (0-100)
+- Sends only these computed facts, the user's goals and risk alerts to an LLM, which explains them in plain language (Overview, Risks, Goals)
+- The prompt forbids inventing or recalculating numbers and recommending specific securities
+- Works with any OpenAI-compatible Chat Completions API (Ollama locally, OpenAI or Groq)
+- Reviews are cached per user for 10 minutes (Caffeine); provider failures return `503` without leaking provider details
+- Every response includes a "not financial advice" disclaimer
+
+---
+
 ## Dashboard Analytics
 
 - Total Investment
@@ -158,6 +171,27 @@ Unlike spreadsheet-based tracking, FinPilot provides a centralized dashboard whe
 - REST APIs
 - Bean Validation
 - Caffeine Cache
+- Spring `RestClient` (OpenAI-compatible LLM integration)
+
+---
+
+## Testing
+
+- JUnit 5
+- Mockito
+- Spring `@WebMvcTest` (MockMvc)
+- `MockRestServiceServer`
+- Testcontainers (PostgreSQL)
+
+---
+
+## DevOps
+
+- Docker (multi-stage builds, non-root runtime)
+- Docker Compose
+- Kubernetes (Deployments, StatefulSet, Services, ConfigMap, Secret, probes, resource limits)
+- Kustomize (built into `kubectl`)
+- Nginx (serves the React build and proxies `/api`)
 
 ---
 
@@ -232,6 +266,7 @@ fin-pilot
 │   ├── common
 │   ├── dashboard
 │   ├── goal
+│   ├── insights
 │   ├── marketdata
 │   ├── portfolio
 │   ├── risk
@@ -261,6 +296,8 @@ fin-pilot
 │   ├── routes
 │   └── styles
 │
+├── k8s                   # Kubernetes manifests (kustomize)
+├── docker-compose.yml
 └── README.md
 ```
 
@@ -614,10 +651,10 @@ Repository
 - Stateless Sessions
 - Spring Security
 - Protected APIs
-- Role-based Authorization
 - Secure Password Storage
 - CORS Configuration
 - Input Validation
+- Consistent JSON error responses (`401` for missing/invalid JWT, `400` validation errors, `404`, `409`, `503`)
 
 # REST API Documentation
 
@@ -676,6 +713,15 @@ Repository
 | Method | Endpoint | Description |
 |---------|----------|-------------|
 | GET | `/api/risk` | Portfolio risk insights |
+
+---
+
+## Insights APIs
+
+| Method | Endpoint | Description |
+|---------|----------|-------------|
+| GET | `/api/insights` | Computed portfolio facts |
+| GET | `/api/insights/ai-review` | AI explanation of the portfolio facts |
 
 ---
 
@@ -738,6 +784,9 @@ Create a `.env` or configure these variables in Railway.
 | MARKETDATA_API_KEY | AlphaVantage API Key |
 | FRONTEND_ALLOWED_ORIGINS | Frontend URL |
 | SPRING_PROFILES_ACTIVE | prod |
+| AI_BASE_URL | OpenAI-compatible API base URL (e.g. `http://localhost:11434/v1` for Ollama) |
+| AI_MODEL | LLM model name (e.g. `qwen2.5:3b`, `gpt-4o-mini`) |
+| AI_API_KEY | LLM API key (empty for Ollama) |
 
 Example:
 
@@ -820,6 +869,47 @@ Runs at
 ```
 http://localhost:5173
 ```
+
+---
+
+## Docker Compose
+
+Runs PostgreSQL, the backend and the frontend (nginx). The AI review defaults to Ollama running on the host.
+
+```bash
+cp .env.example .env      # set DB_PASSWORD, JWT_SECRET (32+ chars), MARKETDATA_API_KEY
+
+docker compose up -d --build
+```
+
+- App: `http://localhost:3000`
+- Backend: `http://localhost:8080/api/health`
+
+---
+
+## Kubernetes
+
+Tested on Docker Desktop's built-in Kubernetes. Images are built locally by Docker Compose.
+
+```bash
+docker compose build
+
+cp k8s/secret.env.example k8s/secret.env   # fill in real values
+
+kubectl apply -k k8s
+
+kubectl -n finpilot get pods
+
+kubectl -n finpilot port-forward svc/finpilot-frontend 3000:80
+```
+
+| Resource | Details |
+|----------|---------|
+| `finpilot-backend` Deployment | 2 replicas, startup/readiness/liveness probes on `/api/health`, CPU/memory requests and limits |
+| `finpilot-frontend` Deployment | 2 replicas, nginx proxies `/api` to the backend Service |
+| `postgres` StatefulSet | 1 replica with a 1Gi PersistentVolumeClaim |
+| `finpilot-config` ConfigMap | Non-secret configuration |
+| `finpilot-secrets` Secret | Generated by kustomize from the gitignored `k8s/secret.env` |
 
 ---
 
@@ -975,6 +1065,21 @@ npm run build
 
 # Testing
 
+## Automated Tests
+
+```bash
+cd finpilot-backend
+
+./mvnw test
+```
+
+- Unit tests (Mockito) for portfolio, analytics, goals, risk, market cache, insights and the AI review
+- `@WebMvcTest` tests for security and error handling (401, validation, 404, 409, 503)
+- `MockRestServiceServer` tests for the LLM client
+- Spring context test against a real PostgreSQL via Testcontainers (skipped when Docker is not available)
+
+## Manual Testing
+
 The application has been tested for:
 
 - User Registration
@@ -1109,7 +1214,6 @@ The following features are planned for future releases.
 
 ### AI Features
 
-- AI Portfolio Review
 - AI Investment Suggestions
 - Risk Prediction
 - Goal Recommendation

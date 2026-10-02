@@ -12,11 +12,11 @@ RUN mvn -B -q package -DskipTests
 FROM eclipse-temurin:21-jre-alpine
 WORKDIR /app
 
-RUN addgroup -S finpilot && adduser -S finpilot -G finpilot
+RUN addgroup -S -g 10001 finpilot && adduser -S -u 10001 -G finpilot finpilot
 
 COPY --from=build /app/target/*.jar app.jar
 
-USER finpilot
+USER 10001:10001
 
 ENV SPRING_PROFILES_ACTIVE=prod
 EXPOSE 8080
