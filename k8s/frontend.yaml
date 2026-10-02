@@ -1,0 +1,51 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: finpilot-frontend
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: finpilot-frontend
+  template:
+    metadata:
+      labels:
+        app: finpilot-frontend
+    spec:
+      containers:
+        - name: frontend
+          image: finpilot-frontend:0.1.0
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 80
+          env:
+            - name: BACKEND_URL
+              value: http://finpilot-backend:8080
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 80
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 80
+            periodSeconds: 20
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 250m
+              memory: 128Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: finpilot-frontend
+spec:
+  selector:
+    app: finpilot-frontend
+  ports:
+    - port: 80
+      targetPort: 80

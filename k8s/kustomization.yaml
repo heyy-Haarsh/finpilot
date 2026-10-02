@@ -1,0 +1,17 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: finpilot
+
+resources:
+  - namespace.yaml
+  - configmap.yaml
+  - postgres.yaml
+  - backend.yaml
+  - frontend.yaml
+
+# Copy secret.env.example to secret.env (gitignored) before applying
+secretGenerator:
+  - name: finpilot-secrets
+    envs:
+      - secret.env

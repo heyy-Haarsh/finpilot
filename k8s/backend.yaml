@@ -1,0 +1,60 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: finpilot-backend
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: finpilot-backend
+  template:
+    metadata:
+      labels:
+        app: finpilot-backend
+    spec:
+      containers:
+        - name: backend
+          image: finpilot-backend:0.1.0
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8080
+          envFrom:
+            - configMapRef:
+                name: finpilot-config
+            - secretRef:
+                name: finpilot-secrets
+          startupProbe:
+            httpGet:
+              path: /api/health
+              port: 8080
+            periodSeconds: 5
+            failureThreshold: 30
+          readinessProbe:
+            httpGet:
+              path: /api/health
+              port: 8080
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /api/health
+              port: 8080
+            periodSeconds: 20
+            failureThreshold: 3
+          resources:
+            requests:
+              cpu: 250m
+              memory: 512Mi
+            limits:
+              cpu: "1"
+              memory: 768Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: finpilot-backend
+spec:
+  selector:
+    app: finpilot-backend
+  ports:
+    - port: 8080
+      targetPort: 8080

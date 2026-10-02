@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: finpilot-config
+data:
+  SPRING_PROFILES_ACTIVE: prod
+  DB_URL: jdbc:postgresql://postgres:5432/finpilot
+  FRONTEND_ALLOWED_ORIGINS: http://localhost:3000
+  AI_BASE_URL: http://host.docker.internal:11434/v1
+  AI_MODEL: qwen2.5:3b
+  AI_TIMEOUT: 120s
